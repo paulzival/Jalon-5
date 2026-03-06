@@ -1,6 +1,15 @@
 import sensor, image, time, pyb
 from pyb import LED, Pin
 
+
+class EtatRobot:
+    RECHERCHE = 0    # État de recherche de la balle (balayage)
+    SUIVI = 1        # État de suivi de la balle
+    FOURCHE = 2      # État : balle dans la fourche
+
+etat = EtatRobot.RECHERCHE  # État initial : recherche de la balle
+
+
 # Initialisation du capteur de caméra
 sensor.reset()
 sensor.set_pixformat(sensor.RGB565)
@@ -45,7 +54,7 @@ def cmd_moteur(rapport_av_ar, vit_droite, vit_gauche):
     M11.pulse_width_percent(vit_droite)
     M12.pulse_width_percent(vit_gauche)
 
-def follow_ball(blob_cx, blob_cy, img_width):
+def suivre_balle(blob_cx, blob_cy, img_width):
     centre_x = img_width // 2
     delta_x = centre_x - blob_cx
 
@@ -80,54 +89,59 @@ def stop_moteurs(): # arrét des moteur
     cmd_moteur(0, 0, 0)
 
 
+
 clock = time.clock()
 
 while True:
     clock.tick()
     img = sensor.snapshot()
 
-    # Définir une zone d'intérêt (ROI) pour limiter la détection à une certaine partie de l'image
-    Hauteur_detect = (0, 50, img.width(), 200)  # (x, y, width, height) - ajuste ces valeurs selon ton besoin
+    # Définir la zone d'intérêt (ROI)
+    roi = (0, 50, img.width(), 200)  # (x, y, width, height)
 
     # Vérifier si la balle est dans la fourche
     if Cd.value() == 1:
-        etat = 2  # Balle dans la fourche
-        print('Balle dans la fourche')
+        etat = EtatRobot.FOURCHE
+        print("Balle dans la fourche")
         stop_moteurs()
+        LED_V.off()
+        LED_R.on()
     else:
+        # Recherche des blobs dans la ROI
+        blobs = img.find_blobs([thresholdsRedBall], area_threshold=50, merge=False, roi=roi)
 
-        print('Balle pas là')
-        etat = 0  # Retour à l'état de recherche si aucune balle dans la fourche
-
-    # Gestion des états
-    if etat == 2:
-        stop_moteurs()
-    else:
-        # Recherche des blobs correspondant à la balle rouge dans la ROI
-        blobs = img.find_blobs([thresholdsRedBall], area_threshold=50, merge=False, roi=Hauteur_detect)
-
-        if len (blobs)!=0:
-            # Trouver le plus grand balle
-            largest_blob = blobs[-1]
+        if blobs:
+            # Trouver le plus grand blob (supposé être la balle)
+            largest_blob = max(blobs, key=lambda b: b.area())
             img.draw_rectangle(largest_blob.rect(), color=(0, 255, 0))
             img.draw_cross(largest_blob.cx(), largest_blob.cy(), color=(0, 255, 0))
-            etat = 1  # Suivi de la balle
-            follow_ball(largest_blob.cx(), largest_blob.cy(), img.width())
+
+            etat = EtatRobot.SUIVI
+            suivre_balle(largest_blob.cx(), largest_blob.cy(), img.width())
+
+            # Allumer la LED verte si la balle est détectée
+            LED_R.off()
+            LED_V.on()
+            print("Balle détectée")
         else:
-            etat = 0  # Recherche de la balle
-            # Activer le balayage si aucune balle n'est détectée ♀ß
+            etat = EtatRobot.RECHERCHE
+            # Activer le balayage si aucune balle n'est détectée
             if not scanning:
                 scanning = True
-
             scan_for_ball()
 
-        if len(blobs) > 0:
-            LED_R.off();
-            LED_V.on();
-            print ('Balle la ')
-        elif (Cd.value()==0):
-            LED_V.off();
-            LED_R.on();
-            print ('Balle pas la ')
+            # Allumer la LED rouge si aucune balle n'est détectée
+            LED_V.off()
+            LED_R.on()
+            print("Balle non détectée")
+
+    # Gestion des états (version explicite avec l'énumération)
+    if etat == EtatRobot.FOURCHE:
+        stop_moteurs()
+    elif etat == EtatRobot.SUIVI:
+        pass  # La logique de suivi est déjà gérée ci-dessus
+    elif etat == EtatRobot.RECHERCHE:
+        pass  # La logique de recherche est déjà gérée ci-dessus
+
     pyb.delay(10)
-    print(clock.fps())
+    print("FPS:", clock.fps())
