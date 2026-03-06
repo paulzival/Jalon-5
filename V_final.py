@@ -96,8 +96,8 @@ while True:
     clock.tick()
     img = sensor.snapshot()
 
-    # Définir la zone d'intérêt (ROI)
-    roi = (0, 50, img.width(), 200)  # (x, y, width, height)
+    # Zone de detection de terrain
+    Zone_Detect = (0, 50, img.width(), 200)  # (x, y, width, height)
 
     # Vérifier si la balle est dans la fourche
     if Cd.value() == 1:
@@ -108,22 +108,19 @@ while True:
         LED_R.on()
     else:
         # Recherche des blobs dans la ROI
-        blobs = img.find_blobs([thresholdsRedBall], area_threshold=50, merge=False, roi=roi)
-
-        if blobs:
-            # Trouver le plus grand blob (supposé être la balle)
-            largest_blob = max(blobs, key=lambda b: b.area())
+        blobs = img.find_blobs([thresholdsRedBall], area_threshold=50, merge=False, roi=Zone_Detect)
+    if len (blobs)!=0:
+            # Trouver le plus grand blob (balle)
+            largest_blob = blobs[-1]
             img.draw_rectangle(largest_blob.rect(), color=(0, 255, 0))
             img.draw_cross(largest_blob.cx(), largest_blob.cy(), color=(0, 255, 0))
-
-            etat = EtatRobot.SUIVI
+            etat = EtatRobot.SUIVI # Suivi de la balle
             suivre_balle(largest_blob.cx(), largest_blob.cy(), img.width())
-
             # Allumer la LED verte si la balle est détectée
             LED_R.off()
             LED_V.on()
             print("Balle détectée")
-        else:
+    else:
             etat = EtatRobot.RECHERCHE
             # Activer le balayage si aucune balle n'est détectée
             if not scanning:
@@ -135,7 +132,7 @@ while True:
             LED_R.on()
             print("Balle non détectée")
 
-    # Gestion des états (version explicite avec l'énumération)
+    #Gestion des état   
     if etat == EtatRobot.FOURCHE:
         stop_moteurs()
     elif etat == EtatRobot.SUIVI:
