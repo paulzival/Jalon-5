@@ -63,15 +63,6 @@ def follow_ball(blob_cx, blob_cy, img_width):
 
     cmd_moteur(0, vit_droite, vit_gauche)
     
-def scan_for_ball():
-    """Balayer l'environnement pour chercher la balle."""
-    global scan_direction
-    if scan_direction == 1:
-        cmd_moteur(0, 40, 20)  # Tourner à droite
-    else:
-        cmd_moteur(0, 20, 40)  # Tourner à gauche
-
-
 def scan_for_ball():    #cherche la balle
     if scanning:
         cmd_moteur(0, 60, 0)  # Tourner à droite
