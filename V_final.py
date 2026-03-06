@@ -106,9 +106,8 @@ while True:
         # Recherche des blobs correspondant à la balle rouge dans la ROI
         blobs = img.find_blobs([thresholdsRedBall], area_threshold=50, merge=False, roi=Hauteur_detect)
 
-        if blobs:
-            # Trouver le plus grand blob (balle)
-
+        if len (blobs)!=0:
+            # Trouver le plus grand balle
             largest_blob = blobs[-1]
             img.draw_rectangle(largest_blob.rect(), color=(0, 255, 0))
             img.draw_cross(largest_blob.cx(), largest_blob.cy(), color=(0, 255, 0))
