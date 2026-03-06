@@ -46,24 +46,31 @@ def cmd_moteur(rapport_av_ar, vit_droite, vit_gauche):
     M12.pulse_width_percent(vit_gauche)
 
 def follow_ball(blob_cx, blob_cy, img_width):
-    """Suivre la balle en ajustant la vitesse des moteurs."""
-    global scanning
+    centre_x = img_width // 2
+    delta_x = centre_x - blob_cx
 
-    # Calcul de l'erreur horizontale
-    delta = 160 - blob_cx
+    # Ajustement de la vitesse en fonction de la distance verticale
+    if blob_cy > 180:  # Balle très proche
+        vitesse_base = 30
+    elif blob_cy < 80:  # Balle loin
+        vitesse_base = 80
+    else:
+        vitesse_base = 60
 
-    # Ajustement de la vitesse en fonction de la position verticale (Cy)
-    speed_adjust_cy = 60 - (blob_cy // 12)
+    # Ajustement de la rotation
+    ajustement_rotation = min(30, abs(delta_x) // 6)
 
-    # Ajustement de la vitesse en fonction de l'erreur horizontale (delta)
-    speed_adjust_delta_right = 70 + (delta // 4)
-    speed_adjust_delta_left = 70 - (delta // 4)
-
-    # Limiter les vitesses pour éviter les valeurs extrêmes
-    vit_droite = min(max(20, speed_adjust_delta_right + speed_adjust_cy), 100)
-    vit_gauche = min(max(20, speed_adjust_delta_left + speed_adjust_cy), 100)
+    if delta_x < 0:  # balle à droite
+        vit_droite = max(20, vitesse_base - ajustement_rotation)
+        vit_gauche = min(100, vitesse_base + ajustement_rotation)
+    elif delta_x > 0:  # balle à gauche
+        vit_droite = min(100, vitesse_base + ajustement_rotation)
+        vit_gauche = max(20, vitesse_base - ajustement_rotation)
+    else:  # balle centrée
+        vit_droite = vit_gauche = vitesse_base
 
     cmd_moteur(0, vit_droite, vit_gauche)
+
 
 def scan_for_ball():    #cherche la balle
     if scanning:
