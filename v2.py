@@ -44,24 +44,40 @@ def cmd_moteur(rapport_av_ar, vit_droite, vit_gauche):
     M12.pulse_width_percent(vit_gauche)
 
 def follow_ball(blob_cx, blob_cy, img_width):
-    """Suivre la balle en ajustant la vitesse des moteurs."""
+    """Suivre la balle en ajustant la vitesse des moteurs en fonction de la distance et de la position horizontale."""
     global scanning
 
-    # Calcul de l'erreur horizontale
-    delta = 160 - blob_cx
+    # Calcul de l'erreur horizontale (centre de l'image : img_width // 2)
+    centre_x = img_width // 2
+    delta_x = centre_x - blob_cx
 
-    # Ajustement de la vitesse en fonction de la position verticale (Cy)
-    speed_adjust_cy = 60 - (blob_cy // 12)
+    # Calcul de la distance verticale (plus blob_cy est grand, plus la balle est proche)
+    distance_verticale = blob_cy
 
-    # Ajustement de la vitesse en fonction de l'erreur horizontale (delta)
-    speed_adjust_delta_right = 70 + (delta // 4)
-    speed_adjust_delta_left = 70 - (delta // 4)
+    # Ajustement de la vitesse en fonction de la distance verticale
+    # Plus la balle est proche (blob_cy grand), plus la vitesse est réduite
+    vitesse_base = 100 - (distance_verticale // 8)
 
-    # Limiter les vitesses pour éviter les valeurs extrêmes
-    vit_droite = min(max(20, speed_adjust_delta_right + speed_adjust_cy), 100)
-    vit_gauche = min(max(20, speed_adjust_delta_left + speed_adjust_cy), 100)
+    # Limiter la vitesse de base entre 20 et 100
+    vitesse_base = min(max(20, vitesse_base), 100)
 
+    # Ajustement de la vitesse en fonction de l'erreur horizontale (delta_x)
+    # Si la balle est à droite (delta_x négatif), accélérer la roue gauche et ralentir la droite
+    # Si la balle est à gauche (delta_x positif), accélérer la roue droite et ralentir la gauche
+    ajustement_rotation = abs(delta_x) // 6
+
+    if delta_x < 0:  # balle à droite
+        vit_droite = max(20, vitesse_base - ajustement_rotation)
+        vit_gauche = min(100, vitesse_base + ajustement_rotation)
+    elif delta_x > 0:  # balle à gauche
+        vit_droite = min(100, vitesse_base + ajustement_rotation)
+        vit_gauche = max(20, vitesse_base - ajustement_rotation)
+    else:  # balle centrée
+        vit_droite = vit_gauche = vitesse_base
+
+    # Envoyer les commandes aux moteurs
     cmd_moteur(0, vit_droite, vit_gauche)
+
     
 def scan_for_ball():
     """Balayer l'environnement pour chercher la balle."""
